@@ -18,14 +18,31 @@ void receiveMessages(SOCKET clientSocket)
         buffer[bytesReceived] = '\0';
         std::cout << "Message from client: " << buffer << std::endl;          
         if (strcmp(buffer, "exit") == 0) {
-            std::cout << "Exit..." << std::endl; 
+            std::cout << "Exit Client..." << std::endl; 
             break;
         }
-    }
+    }   
     closesocket(clientSocket);
-    
-    
-   
+}
+
+void sendMessages(SOCKET clientSocket)
+{
+
+    while (true){
+           
+            std::string messages;
+            std::cout<<"the message you want to send to the client: "<<std::endl;
+            std::getline(std::cin,messages);
+
+            send(clientSocket,messages.c_str(),sizeof(messages),0);  
+            if(messages=="exit")
+            {
+                break;
+            }
+
+        }
+        
+
 }
 
 
@@ -79,25 +96,12 @@ int main()
             continue; 
         }
         
-        std::cout << "Yeni client baglandi" << std::endl;
-
-         std::thread arkaIslem(receiveMessages,clientSocket);
-         arkaIslem.detach();
+        std::cout << "Yeni client baglandi" << std::endl; 
+         std::thread receiveIslem(receiveMessages,clientSocket);
+         receiveIslem.detach(); 
+         std::thread sendIslem(sendMessages,clientSocket);
+         sendIslem.detach();    
         
-        while (true){
-           
-            std::string messages;
-            std::cout<<"the message you want to send to the client: "<<std::endl;
-            std::getline(std::cin,messages);
-
-            send(clientSocket,messages.c_str(),sizeof(messages),0);  
-            if(messages=="exit")
-            {
-                shutdown=true;
-                break;
-            }
-                
-        }
     }
     
     std::cout << "Sunucu kapatiliyor." << std::endl;
@@ -105,4 +109,4 @@ int main()
     WSACleanup(); 
 
     return 0;
-}
+}   

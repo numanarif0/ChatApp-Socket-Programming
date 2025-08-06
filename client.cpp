@@ -16,14 +16,39 @@ void receiveMessages(SOCKET serverSocket)
     {
         bytesReceived = recv(serverSocket, buffer, sizeof(buffer), 0);
         buffer[bytesReceived] = '\0';
-        std::cout << "Message from Server: " << buffer << std::endl;          
-        if (strcmp(buffer, "exit") == 0) {
-            std::cout << "Exit..." << std::endl; 
-        }
+        std::cout << "Message from Server: " << buffer << std::endl;
+        
+        
+
+        if(bytesReceived<=0)
+
+        {
+            break;
+        } 
     }
-    closesocket(serverSocket);
+
+    
+
     
    
+}
+
+void sendMessages(SOCKET clientSocket)
+{
+    while(true){
+    
+    std::string message;
+    std::cout<<"the message you want to send to the server: "<< message<<std::endl;
+    std::getline(std::cin ,message); 
+
+    send(clientSocket, message.c_str(), message.length(),0);
+    if(message=="exit")
+    {
+       break;
+    }
+}
+   
+
 }
 
 int main(){
@@ -55,28 +80,29 @@ inet_pton(AF_INET, "127.0.0.1", &serverAddr.sin_addr);
 
 
 
-connect(clientSocket,(sockaddr*)&serverAddr,sizeof(serverAddr));
-
-
-
-while(true){
-    std::thread altIslem(receiveMessages,clientSocket);
-   // altIslem.detach();
-    std::string message;
-    std::cout<<"the message you want to send to the server: "<< message<<std::endl;
-    std::getline(std::cin ,message); 
-
-    send(clientSocket, message.c_str(), message.length(),0);
-    if(message=="exit")
-    {
-       break;
+  if (connect(clientSocket, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
+        std::cerr << "Connect failed with error: " << WSAGetLastError() << std::endl;
+        closesocket(clientSocket);
+        WSACleanup();
+        return 1;
     }
-    
-    
-}   
+
+
+std::thread receiveIslem(receiveMessages,clientSocket);
+std::thread sendIslem(sendMessages,clientSocket);
+receiveIslem.join();
+sendIslem.join();
+
+
 std::cout << "Sunucu kapatiliyor." << std::endl;
 closesocket(clientSocket);
 WSACleanup();
+
+
 return 0 ;
+
+    
+    
+   
 
 }
