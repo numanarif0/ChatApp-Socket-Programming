@@ -3,8 +3,34 @@
 #include <ws2tcpip.h>
 #include <cstring>
 #include <string>
+#include <thread>
 
 #define PORT 8080
+
+
+void receiveMessages(SOCKET clientSocket)
+{
+    char buffer[1024];
+    int bytesReceived;
+    while (true)
+    {
+        bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
+        buffer[bytesReceived] = '\0';
+        std::cout << "Message from client: " << buffer << std::endl;          
+        if (strcmp(buffer, "exit") == 0) {
+            std::cout << "Exit..." << std::endl; 
+            break;
+        }
+    }
+    closesocket(clientSocket);
+    
+    
+   
+}
+
+
+
+
 
 int main()
 {
@@ -42,6 +68,7 @@ int main()
     }
 
     std::cout << "Sunucu dinlemede..." << std::endl;
+    
 
     bool shutdown = false; 
 
@@ -54,36 +81,23 @@ int main()
         
         std::cout << "Yeni client baglandi" << std::endl;
 
-        char buffer[1024];
-        int bytesReceived;
+         std::thread arkaIslem(receiveMessages,clientSocket);
+         arkaIslem.detach();
         
         while (true){
-
-
-
-            
-        }
-        while ((bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0)) > 0) {
-
-            
-            buffer[bytesReceived] = '\0';
-            std::cout << "Message from client: " << buffer << std::endl;          
-            if (strcmp(buffer, "exit") == 0) {
-                std::cout << "Exit..." << std::endl;
-                shutdown = true;  
-                break; 
-            }
+           
             std::string messages;
             std::cout<<"the message you want to send to the client: "<<std::endl;
             std::getline(std::cin,messages);
 
-            send(clientSocket,messages.c_str(),sizeof(messages),0);
+            send(clientSocket,messages.c_str(),sizeof(messages),0);  
+            if(messages=="exit")
+            {
+                shutdown=true;
+                break;
+            }
+                
         }
-        if (bytesReceived == 0) {
-            std::cout << "Client kapandi" << std::endl;
-        } 
-        
-        closesocket(clientSocket); 
     }
     
     std::cout << "Sunucu kapatiliyor." << std::endl;

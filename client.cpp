@@ -3,10 +3,28 @@
 #include <ws2tcpip.h>
 #include <cstring>
 #include <string>
+#include <thread>
 
 
 #define PORT 8080
 
+void receiveMessages(SOCKET serverSocket)
+{
+    char buffer[1024];
+    int bytesReceived;
+    while (true)
+    {
+        bytesReceived = recv(serverSocket, buffer, sizeof(buffer), 0);
+        buffer[bytesReceived] = '\0';
+        std::cout << "Message from Server: " << buffer << std::endl;          
+        if (strcmp(buffer, "exit") == 0) {
+            std::cout << "Exit..." << std::endl; 
+        }
+    }
+    closesocket(serverSocket);
+    
+   
+}
 
 int main(){
 
@@ -35,15 +53,15 @@ serverAddr.sin_addr.s_addr = INADDR_ANY;
 inet_pton(AF_INET, "127.0.0.1", &serverAddr.sin_addr);
 
 
-int bytes_read=1;
-char buffer[1024];
 
 
 connect(clientSocket,(sockaddr*)&serverAddr,sizeof(serverAddr));
 
 
+
 while(true){
-    
+    std::thread altIslem(receiveMessages,clientSocket);
+   // altIslem.detach();
     std::string message;
     std::cout<<"the message you want to send to the server: "<< message<<std::endl;
     std::getline(std::cin ,message); 
@@ -53,19 +71,10 @@ while(true){
     {
        break;
     }
-    message.clear();
-
-    
-    bytes_read= recv(clientSocket,buffer,sizeof(buffer),0);
-    buffer[bytes_read]='\0';
-    std::cout<<"Message from server: "<<buffer <<std::endl;
-
-
-
     
     
 }   
-
+std::cout << "Sunucu kapatiliyor." << std::endl;
 closesocket(clientSocket);
 WSACleanup();
 return 0 ;
