@@ -5,6 +5,7 @@
 #include <string>
 
 
+
 #define PORT 8080
 
 
@@ -35,26 +36,66 @@ serverAddr.sin_addr.s_addr = INADDR_ANY;
 inet_pton(AF_INET, "127.0.0.1", &serverAddr.sin_addr);
 
 connect(clientSocket,(sockaddr*)&serverAddr,sizeof(serverAddr));
+bool shutdown = false; 
 
+while(!shutdown){
+    SOCKET serverSocket = accept(clientSocket,nullptr,nullptr);
+    if(serverSocket==INVALID_SOCKET){
+         std::cerr << "Accept failed with error: " << WSAGetLastError() << std::endl;
+            continue; 
+        }
+    std::cout << "Yeni client baglandi" << std::endl;
 
-while(true){
-    
-    std::string message;
-    std::cout<<"the message you want to send to the server: "<< message<<std::endl;
-    std::getline(std::cin ,message); 
+    char buffer[1024];
+    int bytesReceived;
 
-    send(clientSocket, message.c_str(), message.length(),0);
-    if(message=="exit")
+    while(true)
     {
-       break;
-    }
-    
-    message.clear();
-    
-}
+        bytesReceived=recv(serverSocket,buffer,sizeof(buffer),0);
+        if(bytesReceived>0)
+        {
+            buffer[bytesReceived] = '\0';
+            std::cout << "Message from server: " << buffer << std::endl; 
+        }
+        
+        std::string message;
+        std::cout<<"the message you want to send to the server: "<< message<<std::endl;
+        std::getline(std::cin ,message); 
 
+        send(clientSocket, message.c_str(), message.length(),0);
+        if(message=="exit")
+        {
+        break;
+        }
+
+        if(strcmp(buffer,"exit")==0){
+            std::cout << "Exit..." << std::endl;
+            shutdown = true;  
+            break; 
+        }
+        
+        message.clear();
+    }
+  
+}
+        
 closesocket(clientSocket);
 WSACleanup();
 return 0 ;
 
-}
+
+        
+
+
+
+
+
+    }
+
+    
+
+   
+
+
+
+

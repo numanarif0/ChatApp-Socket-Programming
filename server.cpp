@@ -2,6 +2,7 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <cstring>
+#include <string>
 
 #define PORT 8080
 
@@ -50,21 +51,39 @@ int main()
             std::cerr << "Accept failed with error: " << WSAGetLastError() << std::endl;
             continue; 
         }
+
+
+
         
         std::cout << "Yeni client baglandi" << std::endl;
 
         char buffer[1024];
         int bytesReceived;
         
-      
-        while ((bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0)) > 0) {
-            buffer[bytesReceived] = '\0';
-            std::cout << "Message from client: " << buffer << std::endl;          
+        while(true)
+        {
+            bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
+            if(bytesReceived>0)
+            {
+                buffer[bytesReceived] = '\0';
+                std::cout << "Message from client: " << buffer << std::endl;                
+            }       
+
+            std::string server_messages;
+            std::cout<<"the message you want to send to the client: "<<std::endl;
+            std::getline(std::cin,server_messages);
+            send(serverSocket,server_messages.c_str(),server_messages.length(),0);
+
+            if(server_messages=="exit"){
+                std::cout<<"Exit..."<<std::endl;
+                break;
+            }
+            
             if (strcmp(buffer, "exit") == 0) {
                 std::cout << "Exit..." << std::endl;
                 shutdown = true;  
                 break; 
-            }
+            }              
         }
         if (bytesReceived == 0) {
             std::cout << "Client kapandi" << std::endl;

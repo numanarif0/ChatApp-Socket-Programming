@@ -21,14 +21,14 @@ all: $(CLIENT_TARGET) $(SERVER_TARGET)
 
 $(CLIENT_TARGET): $(CLIENT_SRC)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
-	@echo "İstemci uygulaması '$(CLIENT_TARGET)' başarıyla oluşturuldu."
+	@echo "Istemci uygulamasi '$(CLIENT_TARGET)' basariyla olusturuldu."
 
 
 $(SERVER_TARGET): $(SERVER_SRC)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
-	@echo "Sunucu uygulaması '$(SERVER_TARGET)' başarıyla oluşturuldu."
+	@echo "Sunucu uygulamasi '$(SERVER_TARGET)' basariyla olusturuldu."
 
 clean:
-	@echo "Oluşturulan dosyalar temizleniyor..."
+	@echo "Olusturulan dosyalar temizleniyor..."
 	rm -f $(CLIENT_TARGET) $(SERVER_TARGET) *.o
-	@echo "Temizlik tamamlandı."
+	@echo "Temizlik tamamlandi."
