@@ -1,7 +1,6 @@
 #include <iostream>
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#pragma comment(lib, "ws2_32.lib")
 #include <cstring>
 #include <string>
 
@@ -35,23 +34,40 @@ serverAddr.sin_port = htons(PORT);
 serverAddr.sin_addr.s_addr = INADDR_ANY;
 inet_pton(AF_INET, "127.0.0.1", &serverAddr.sin_addr);
 
+
+int bytes_read=1;
+char buffer[1024];
+
+
 connect(clientSocket,(sockaddr*)&serverAddr,sizeof(serverAddr));
 
 
 while(true){
-
+    
     std::string message;
     std::cout<<"the message you want to send to the server: "<< message<<std::endl;
-    std::cin>> message;
+    std::getline(std::cin ,message); 
 
-    send(clientSocket, message.c_str(), message.length(), 0);
+    send(clientSocket, message.c_str(), message.length(),0);
     if(message=="exit")
     {
        break;
     }
-}
-closesocket(clientSocket);
+    message.clear();
 
+    
+    bytes_read= recv(clientSocket,buffer,sizeof(buffer),0);
+    buffer[bytes_read]='\0';
+    std::cout<<"Message from server: "<<buffer <<std::endl;
+
+
+
+    
+    
+}   
+
+closesocket(clientSocket);
+WSACleanup();
 return 0 ;
 
 }

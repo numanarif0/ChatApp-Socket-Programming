@@ -1,62 +1,94 @@
 #include <iostream>
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#pragma comment(lib, "ws2_32.lib")
 #include <cstring>
-
+#include <string>
 
 #define PORT 8080
-
 
 int main()
 {
     WSADATA wsaData;
-
     int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
-     if (result != 0) {
+    if (result != 0) {
         std::cerr << "WSAStartup basarisiz oldu: " << result << std::endl;
         return 1;
     }
-    SOCKET serverSocket = INVALID_SOCKET;
- 
 
-    serverSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    SOCKET serverSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (serverSocket == INVALID_SOCKET) {
         std::cerr << "Socket creation bu hata ile fail oldu: " << WSAGetLastError() << std::endl;
         WSACleanup();
         return 1;
     }
-    sockaddr_in serverAddr={};
+
+    sockaddr_in serverAddr = {};
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(PORT);
     serverAddr.sin_addr.s_addr = INADDR_ANY;
-    int len_serverAddr = sizeof(serverAddr);
-    
 
-    bind(serverSocket, (sockaddr*)&serverAddr, sizeof(serverAddr));
+    if (bind(serverSocket, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) { 
+        std::cerr << "Bind failed with error: " << WSAGetLastError() << std::endl;
+        closesocket(serverSocket);
+        WSACleanup();
+        return 1;
+    }
     
-    listen(serverSocket, SOMAXCONN) == SOCKET_ERROR;
+    if (listen(serverSocket, SOMAXCONN) == SOCKET_ERROR) { 
+        std::cerr << "Listen failed with error: " << WSAGetLastError() << std::endl;
+        closesocket(serverSocket);
+        WSACleanup();
+        return 1;
+    }
+
     std::cout << "Sunucu dinlemede..." << std::endl;
 
-    while (true){
-    int clientSocket = accept(serverSocket,nullptr,nullptr);
-        char buffer[1024] = {0};
-        recv(clientSocket,buffer,sizeof(buffer),0);
-     /*   if(strcmp(buffer,"exit\n"))
-        {
-            std::cout<<  "exit" << std::endl;
-            break;
-        } */
-        std::cout<< "Message from client:" << buffer << std::endl;
-        
+    bool shutdown = false; 
+
+    while (!shutdown) { 
+        SOCKET clientSocket = accept(serverSocket, nullptr, nullptr);
+        if (clientSocket == INVALID_SOCKET) { 
+            std::cerr << "Accept failed with error: " << WSAGetLastError() << std::endl;
+            continue; 
         }
+        
+        std::cout << "Yeni client baglandi" << std::endl;
+
+        char buffer[1024];
+        int bytesReceived;
+        
+        while (true){
+
+
+
+            
+        }
+        while ((bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0)) > 0) {
+
+            
+            buffer[bytesReceived] = '\0';
+            std::cout << "Message from client: " << buffer << std::endl;          
+            if (strcmp(buffer, "exit") == 0) {
+                std::cout << "Exit..." << std::endl;
+                shutdown = true;  
+                break; 
+            }
+            std::string messages;
+            std::cout<<"the message you want to send to the client: "<<std::endl;
+            std::getline(std::cin,messages);
+
+            send(clientSocket,messages.c_str(),sizeof(messages),0);
+        }
+        if (bytesReceived == 0) {
+            std::cout << "Client kapandi" << std::endl;
+        } 
+        
+        closesocket(clientSocket); 
+    }
     
-closesocket(serverSocket);
+    std::cout << "Sunucu kapatiliyor." << std::endl;
+    closesocket(serverSocket);
+    WSACleanup(); 
 
-return 0 ;
-
-
+    return 0;
 }
-
-    
-
