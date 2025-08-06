@@ -1,7 +1,6 @@
 #include <iostream>
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#pragma comment(lib, "ws2_32.lib")
 #include <cstring>
 #include <string>
 
@@ -39,19 +38,23 @@ connect(clientSocket,(sockaddr*)&serverAddr,sizeof(serverAddr));
 
 
 while(true){
-
+    
     std::string message;
     std::cout<<"the message you want to send to the server: "<< message<<std::endl;
-    std::cin>> message;
+    std::getline(std::cin ,message); 
 
-    send(clientSocket, message.c_str(), message.length(), 0);
+    send(clientSocket, message.c_str(), message.length(),0);
     if(message=="exit")
     {
        break;
     }
+    
+    message.clear();
+    
 }
-closesocket(clientSocket);
 
+closesocket(clientSocket);
+WSACleanup();
 return 0 ;
 
 }
