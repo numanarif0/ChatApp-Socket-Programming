@@ -21,6 +21,11 @@ void receiveMessages(SOCKET clientSocket)
             std::cout << "Exit Client..." << std::endl; 
             break;
         }
+       if(bytesReceived==-1){
+        std::cout<<"Client closed";
+        break;
+
+       } 
     }   
     closesocket(clientSocket);
 }
