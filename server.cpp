@@ -1,57 +1,71 @@
 #include <iostream>
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#include <cstring>
 #include <string>
 #include <thread>
+#include <vector>
+#include <mutex>
+#include <algorithm> 
 
 #define PORT 8080
+
+
+std::vector<SOCKET> clientSockets;
+std::mutex clientMutex;
 
 
 void receiveMessages(SOCKET clientSocket)
 {
     char buffer[1024];
     int bytesReceived;
+
     while (true)
     {
         bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
-        buffer[bytesReceived] = '\0';
-        std::cout << "Message from client: " << buffer << std::endl;          
-        if (strcmp(buffer, "exit") == 0) {
-            std::cout << "Exit Client..." << std::endl; 
-            break;
-        }
-       if(bytesReceived==-1){
-        std::cout<<"Client closed";
-        break;
-
-       } 
-    }   
-    closesocket(clientSocket);
-}
-
-void sendMessages(SOCKET clientSocket)
-{
-
-    while (true){
-           
-            std::string messages;
-            std::cout<<"the message you want to send to the client: "<<std::endl;
-            std::getline(std::cin,messages);
-
-            send(clientSocket,messages.c_str(),sizeof(messages),0);  
-            if(messages=="exit")
-            {
-                break;
-            }
-
+        
+     
+        if (bytesReceived <= 0) {
+            std::cout << "Client " << clientSocket << " baglantisi koptu." << std::endl;
+            
+      
+            std::lock_guard<std::mutex> lock(clientMutex);
+            clientSockets.erase(std::remove(clientSockets.begin(), clientSockets.end(), clientSocket), clientSockets.end());
+            
+            
+            closesocket(clientSocket);
+            break; 
         }
         
-
+        buffer[bytesReceived] = '\0';
+        std::cout << "Message from client " << clientSocket << ": " << buffer << std::endl;
+    }
 }
 
 
+void sendMessagesToAll()
+{
+    std::string message;
+    while (true) {
+        std::cout << "Tum client'lara gonderilecek mesaj: ";
+        std::getline(std::cin, message);
 
+        if (message == "exit") {
+            
+            break;
+        }
+
+        std::lock_guard<std::mutex> lock(clientMutex);
+        if (clientSockets.empty()) {
+            std::cout << "(Hic bagli client yok)" << std::endl;
+            continue;
+        }
+
+        
+        for (SOCKET clientSocket : clientSockets) {
+            send(clientSocket, message.c_str(), message.length(), 0);
+        }
+    }
+}
 
 
 int main()
@@ -75,14 +89,14 @@ int main()
     serverAddr.sin_port = htons(PORT);
     serverAddr.sin_addr.s_addr = INADDR_ANY;
 
-    if (bind(serverSocket, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) { 
+    if (bind(serverSocket, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
         std::cerr << "Bind failed with error: " << WSAGetLastError() << std::endl;
         closesocket(serverSocket);
         WSACleanup();
         return 1;
     }
-    
-    if (listen(serverSocket, SOMAXCONN) == SOCKET_ERROR) { 
+
+    if (listen(serverSocket, SOMAXCONN) == SOCKET_ERROR) {
         std::cerr << "Listen failed with error: " << WSAGetLastError() << std::endl;
         closesocket(serverSocket);
         WSACleanup();
@@ -90,28 +104,38 @@ int main()
     }
 
     std::cout << "Sunucu dinlemede..." << std::endl;
-    
 
-    bool shutdown = false; 
+   
+    std::thread sendToAllThread(sendMessagesToAll);
+    sendToAllThread.detach(); 
+   
 
-    while (!shutdown) { 
+    while (true) {
         SOCKET clientSocket = accept(serverSocket, nullptr, nullptr);
-        if (clientSocket == INVALID_SOCKET) { 
+        if (clientSocket == INVALID_SOCKET) {
             std::cerr << "Accept failed with error: " << WSAGetLastError() << std::endl;
-            continue; 
+            continue;
         }
         
-        std::cout << "Yeni client baglandi" << std::endl; 
-         std::thread receiveIslem(receiveMessages,clientSocket);
-         receiveIslem.detach(); 
-         std::thread sendIslem(sendMessages,clientSocket);
-         sendIslem.detach();    
+        std::cout << "Yeni client baglandi: " << clientSocket << std::endl;
+
+   
+        {
+            std::lock_guard<std::mutex> lock(clientMutex);
+            clientSockets.push_back(clientSocket);
+        }
+       
         
+        
+        std::thread receiveThread(receiveMessages, clientSocket);
+        receiveThread.detach();
+        
+      
     }
-    
+
     std::cout << "Sunucu kapatiliyor." << std::endl;
     closesocket(serverSocket);
-    WSACleanup(); 
+    WSACleanup();
 
     return 0;
-}   
+}

@@ -22,8 +22,9 @@ public:
 protected:
     void on_send_button_clicked();
     void on_message_received();
-    void connect_to_server();
     void receive_messages();
+    void on_status_update(); 
+    void connection_manager();
 
    
     Glib::RefPtr<Gtk::ApplicationWindow> m_window;
@@ -34,6 +35,7 @@ protected:
     Gtk::TextView* m_chat_history_view = nullptr;
     Gtk::Entry* m_input_messages = nullptr;
     Glib::RefPtr<Gtk::TextBuffer> m_chat_buffer;
+    std::thread m_connection_thread; 
 
 
     SOCKET m_socket = INVALID_SOCKET;
@@ -43,6 +45,9 @@ protected:
 
     std::string m_message_from_thread;
     std::mutex m_mutex;
+    std::string m_status_message;
+    Glib::Dispatcher m_status_dispatcher;
+    std::mutex m_status_mutex; 
 };
 
 #endif
