@@ -12,6 +12,9 @@
 
 std::vector<SOCKET> clientSockets;
 std::mutex clientMutex;
+std::vector<char> messagesFromOtherClient;
+
+
 
 
 void receiveMessages(SOCKET clientSocket)
@@ -38,6 +41,15 @@ void receiveMessages(SOCKET clientSocket)
         
         buffer[bytesReceived] = '\0';
         std::cout << "Message from client " << clientSocket << ": " << buffer << std::endl;
+        messagesFromOtherClient.insert(messagesFromOtherClient.end(), buffer, buffer + bytesReceived);
+        std::lock_guard<std::mutex> lock(clientMutex);
+        for (SOCKET sock : clientSockets) {
+            if (sock != clientSocket) { 
+                send(sock, buffer, bytesReceived, 0);
+            }
+            }
+        
+
     }
 }
 
@@ -64,6 +76,7 @@ void sendMessagesToAll()
         for (SOCKET clientSocket : clientSockets) {
             send(clientSocket, message.c_str(), message.length(), 0);
         }
+        
     }
 }
 
