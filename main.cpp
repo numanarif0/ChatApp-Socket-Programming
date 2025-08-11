@@ -1,4 +1,4 @@
-#include "ChatWindow.hpp"
+#include "MainWindow.hpp"
 #include <gtkmm/application.h>
 
 int main(int argc, char* argv[]) {
@@ -7,7 +7,7 @@ int main(int argc, char* argv[]) {
  
     app->signal_activate().connect([&]() {
    
-        auto controller = new ChatWindow();
+        auto controller = new MainWindow();
         
    
         app->add_window(*controller->get_window());

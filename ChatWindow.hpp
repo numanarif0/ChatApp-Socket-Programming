@@ -8,46 +8,48 @@
 #include <atomic>
 #include <mutex>
 
-
 class ChatWindow {
 public:
-    ChatWindow();
+    
+    ChatWindow(Gtk::Window& parent, const std::string& my_username, const std::string& target_username);
     virtual ~ChatWindow();
 
- 
-    Gtk::ApplicationWindow* get_window();
+    Gtk::Window* get_window();
 
-protected:
+private:
     void on_send_button_clicked();
-    void on_message_received();
-    void receive_messages();
-    void on_status_update(); 
-    void connection_manager();
-    void get_username();
-
-   
-    Glib::RefPtr<Gtk::ApplicationWindow> m_window;
+    void append_message(const std::string& message, bool is_mine);
     
- 
-    Gtk::Label* m_Information = nullptr;
-    Gtk::Button* m_SendMessage = nullptr;
+    void connection_manager();
+    void receive_messages();
+
+    void on_message_received();
+    void on_status_update();
+
+    Glib::RefPtr<Gtk::Builder> m_builder;
+    Gtk::Window* m_window = nullptr;
+    Gtk::Label* m_status_label = nullptr;
+    Gtk::Button* m_send_button = nullptr;
     Gtk::TextView* m_chat_history_view = nullptr;
-    Gtk::Entry* m_input_messages = nullptr;
+    Gtk::Entry* m_message_input = nullptr;
     Glib::RefPtr<Gtk::TextBuffer> m_chat_buffer;
-    std::thread m_connection_thread; 
 
 
     SOCKET m_socket = INVALID_SOCKET;
+    std::string m_my_username;
+    std::string m_target_username;
+    
+    std::thread m_connection_thread;
     std::thread m_receive_thread;
-    Glib::Dispatcher m_dispatcher;
-    std::atomic<bool> m_is_running;
-    std::string m_username_client;
+    std::atomic<bool> m_is_running{true};
 
+    Glib::Dispatcher m_dispatcher;
     std::string m_message_from_thread;
     std::mutex m_mutex;
-    std::string m_status_message;
+
     Glib::Dispatcher m_status_dispatcher;
-    std::mutex m_status_mutex; 
+    std::string m_status_message;
+    std::mutex m_status_mutex;
 };
 
-#endif
+#endif 

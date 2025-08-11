@@ -4,7 +4,7 @@ LIBS = `pkg-config --libs gtkmm-4.0` -lws2_32
 
 LIBS_SERVER = -lws2_32
 
-SOURCES = main.cpp ChatWindow.cpp 
+SOURCES = main.cpp ChatWindow.cpp MainWindow.cpp
 OBJECTS = $(SOURCES:.cpp=.o)
 
 SOURCES_SERVER = server.cpp

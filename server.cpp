@@ -5,103 +5,133 @@
 #include <thread>
 #include <vector>
 #include <mutex>
-#include <algorithm> 
+#include <map>
+#include <sstream>
+#include <algorithm>
 
 #define PORT 8080
 
-
-std::vector<SOCKET> clientSockets;
+std::map<SOCKET, std::string> socketToUser;
+std::map<std::string, SOCKET> userToSocket;
+std::map<std::string, SOCKET> userToPmSocket;
 std::mutex clientMutex;
-std::vector<char> messagesFromOtherClient;
 
-
-
-
-
-void receiveMessages(SOCKET clientSocket)
-{
-    char buffer[1024];
-    int bytesReceived;
-
-    while (true)
-    {
-        bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
-        
-        if (bytesReceived <= 0) {
-            std::cout << "Client " << clientSocket << " baglantisi koptu." << std::endl;
-            
-            std::lock_guard<std::mutex> lock(clientMutex);
-            clientSockets.erase(std::remove(clientSockets.begin(), clientSockets.end(), clientSocket), clientSockets.end());
-            
-            closesocket(clientSocket);
-            break; 
+void broadcastUserList() {
+    std::string userListStr = "USERLIST|";
+    std::lock_guard<std::mutex> lock(clientMutex);
+    
+    if (socketToUser.empty()) {
+        userListStr += ","; 
+    } else {
+        for (auto const& [sock, name] : socketToUser) {
+            userListStr += name + ",";
         }
-        std::string received_data(buffer, bytesReceived);
-        std::string username;
-        std::string message;
-        size_t delimiter_pos = received_data.find('|');
+    }
 
-        if (delimiter_pos != std::string::npos) {
-            username = received_data.substr(0, delimiter_pos);
-            message = received_data.substr(delimiter_pos + 1);
-            std::string final_message = username + ": " + message;
-            std::cout << "Message from '" << username << "': " << message << std::endl;
+    for (auto const& [sock, name] : socketToUser) {
+        send(sock, userListStr.c_str(), userListStr.length(), 0);
+    }
+}
+
+void handleClient(SOCKET clientSocket) {
+    char buffer[2048];
+    int bytesReceived;
+    std::string username; 
+
+
+    bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
+    if (bytesReceived <= 0) {
+        closesocket(clientSocket);
+        return;
+    }
+
+    std::string firstMsg(buffer, bytesReceived);
+    size_t delim = firstMsg.find('|');
+    if (delim == std::string::npos) {
+        closesocket(clientSocket);
+        return;
+    }
+
+    std::string type = firstMsg.substr(0, delim);
+    username = firstMsg.substr(delim + 1);
+
+    if (type == "LOGIN") {
+       
+        std::cout << "Lobiye baglandi: " << username << " (" << clientSocket << ")" << std::endl;
+        {
             std::lock_guard<std::mutex> lock(clientMutex);
-            for (SOCKET sock : clientSockets) {
-                if (sock != clientSocket) {
-                    send(sock, final_message.c_str(), final_message.length(), 0);
+            socketToUser[clientSocket] = username;
+        }
+        broadcastUserList(); 
+    } else if (type == "INIT_PM") {
+        
+         std::cout << "PM kanali acti: " << username << " (" << clientSocket << ")" << std::endl;
+        {
+            std::lock_guard<std::mutex> lock(clientMutex);
+            userToPmSocket[username] = clientSocket;
+        }
+    } else {
+        closesocket(clientSocket);
+        return;
+    }
+
+
+    while ((bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0)) > 0) {
+        std::string message(buffer, bytesReceived);
+        
+        if (message.rfind("PM|", 0) == 0) {
+            std::stringstream ss(message.substr(3)); 
+            std::string recipient, msg_content;
+            
+            std::getline(ss, recipient, '|');
+            std::getline(ss, msg_content);
+
+            std::cout << "'" << username << "' -> '" << recipient << "': " << msg_content << std::endl;
+
+            SOCKET recipientSocket = INVALID_SOCKET;
+            {
+                std::lock_guard<std::mutex> lock(clientMutex);
+                if (userToPmSocket.count(recipient)) {
+                    recipientSocket = userToPmSocket[recipient];
                 }
             }
-        } else {
-
-            std::cerr << "Hatali formatta mesaj alindi: " << received_data << std::endl;
-        }
-    }
-}
-
-
-void sendMessagesToAll()
-{
-    std::string message;
-    while (true) {
-        std::cout << "Tum client'lara gonderilecek mesaj: ";
-        std::getline(std::cin, message);
-        message = "Server: " + message;
-
-        if (message == "exit") {
             
-            break;
+            if (recipientSocket != INVALID_SOCKET) {
+               
+                std::string forward_msg = "FROM|" + username + "|" + msg_content;
+                send(recipientSocket, forward_msg.c_str(), forward_msg.length(), 0);
+            }
         }
-
-        std::lock_guard<std::mutex> lock(clientMutex);
-        if (clientSockets.empty()) {
-            std::cout << "(Hic bagli client yok)" << std::endl;
-            continue;
-        }
-
-        
-        for (SOCKET clientSocket : clientSockets) {
-            send(clientSocket, message.c_str(), message.length(), 0);
-        }
-
-
-        
     }
+
+    
+    std::cout << username << " (" << clientSocket << ") baglantisi koptu." << std::endl;
+    {
+        std::lock_guard<std::mutex> lock(clientMutex);
+        if (socketToUser.count(clientSocket)) {
+            
+            socketToUser.erase(clientSocket);
+            broadcastUserList(); 
+        }
+        if (userToPmSocket[username] == clientSocket){
+        
+            userToPmSocket.erase(username);
+        }
+    }
+    closesocket(clientSocket);
 }
 
 
-int main()
-{
+int main() {
     WSADATA wsaData;
-    int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
-    if (result != 0) {
-        std::cerr << "WSAStartup basarisiz oldu: " << result << std::endl;
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+        std::cerr << "WSAStartup basarisiz oldu." << std::endl;
         return 1;
     }
 
     SOCKET serverSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (serverSocket == INVALID_SOCKET) {
-        std::cerr << "Socket creation bu hata ile fail oldu: " << WSAGetLastError() << std::endl;
+        std::cerr << "Socket olusturulamadi." << std::endl;
         WSACleanup();
         return 1;
     }
@@ -111,56 +141,21 @@ int main()
     serverAddr.sin_port = htons(PORT);
     serverAddr.sin_addr.s_addr = INADDR_ANY;
 
-    if (bind(serverSocket, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
-        std::cerr << "Bind failed with error: " << WSAGetLastError() << std::endl;
-        closesocket(serverSocket);
-        WSACleanup();
-        return 1;
-    }
-
-    if (listen(serverSocket, SOMAXCONN) == SOCKET_ERROR) {
-        std::cerr << "Listen failed with error: " << WSAGetLastError() << std::endl;
-        closesocket(serverSocket);
-        WSACleanup();
-        return 1;
-    }
+    bind(serverSocket, (sockaddr*)&serverAddr, sizeof(serverAddr));
+    listen(serverSocket, SOMAXCONN);
 
     std::cout << "Sunucu dinlemede..." << std::endl;
-
-   
-    std::thread sendToAllThread(sendMessagesToAll);
-    sendToAllThread.detach(); 
-   
 
     while (true) {
         SOCKET clientSocket = accept(serverSocket, nullptr, nullptr);
         if (clientSocket == INVALID_SOCKET) {
-            std::cerr << "Accept failed with error: " << WSAGetLastError() << std::endl;
             continue;
         }
-        
-        std::cout << "Yeni client baglandi: " << clientSocket << std::endl;
-
-  
-
-
-   
-        {
-            std::lock_guard<std::mutex> lock(clientMutex);
-            clientSockets.push_back(clientSocket);
-        }
-       
-        
-        
-        std::thread receiveThread(receiveMessages, clientSocket);
-        receiveThread.detach();
-        
       
+        std::thread(handleClient, clientSocket).detach();
     }
 
-    std::cout << "Sunucu kapatiliyor." << std::endl;
     closesocket(serverSocket);
     WSACleanup();
-
     return 0;
 }
