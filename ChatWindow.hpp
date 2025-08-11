@@ -1,5 +1,3 @@
-// ChatWindow.hpp
-
 #ifndef CHAT_WINDOW_HPP
 #define CHAT_WINDOW_HPP
 
@@ -25,6 +23,7 @@ protected:
     void receive_messages();
     void on_status_update(); 
     void connection_manager();
+    void get_username();
 
    
     Glib::RefPtr<Gtk::ApplicationWindow> m_window;
@@ -42,7 +41,7 @@ protected:
     std::thread m_receive_thread;
     Glib::Dispatcher m_dispatcher;
     std::atomic<bool> m_is_running;
-
+    std::string m_username_client;
 
     std::string m_message_from_thread;
     std::mutex m_mutex;

@@ -27,33 +27,35 @@ void receiveMessages(SOCKET clientSocket)
     {
         bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
         
-     
         if (bytesReceived <= 0) {
             std::cout << "Client " << clientSocket << " baglantisi koptu." << std::endl;
             
-      
             std::lock_guard<std::mutex> lock(clientMutex);
             clientSockets.erase(std::remove(clientSockets.begin(), clientSockets.end(), clientSocket), clientSockets.end());
-            
             
             closesocket(clientSocket);
             break; 
         }
-        
-        buffer[bytesReceived] = '\0';
+        std::string received_data(buffer, bytesReceived);
+        std::string username;
+        std::string message;
+        size_t delimiter_pos = received_data.find('|');
 
-        std::cout << "Message from client " << clientSocket << ": " << buffer << std::endl;
-        messagesFromOtherClient.insert(messagesFromOtherClient.end(), buffer, buffer + bytesReceived);
-        std::lock_guard<std::mutex> lock(clientMutex);
-        for (SOCKET sock : clientSockets) {
-            if (sock != clientSocket) {
-                
-                std::string msgWithID = std::to_string(clientSocket) + ": " + std::string(buffer, bytesReceived);
-                send(sock, msgWithID.c_str(), msgWithID.length(), 0);
+        if (delimiter_pos != std::string::npos) {
+            username = received_data.substr(0, delimiter_pos);
+            message = received_data.substr(delimiter_pos + 1);
+            std::string final_message = username + ": " + message;
+            std::cout << "Message from '" << username << "': " << message << std::endl;
+            std::lock_guard<std::mutex> lock(clientMutex);
+            for (SOCKET sock : clientSockets) {
+                if (sock != clientSocket) {
+                    send(sock, final_message.c_str(), final_message.length(), 0);
+                }
             }
-        }
-        
+        } else {
 
+            std::cerr << "Hatali formatta mesaj alindi: " << received_data << std::endl;
+        }
     }
 }
 

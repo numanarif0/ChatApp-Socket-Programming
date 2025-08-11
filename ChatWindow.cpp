@@ -23,14 +23,13 @@ ChatWindow::ChatWindow() : m_is_running(true) {
     m_chat_history_view = builder->get_widget<Gtk::TextView>("chat_history_view");
     m_input_messages = builder->get_widget<Gtk::Entry>("message_input");
     m_chat_buffer = m_chat_history_view->get_buffer();
+    get_username();
 
     
     m_SendMessage->signal_clicked().connect(sigc::mem_fun(*this, &ChatWindow::on_send_button_clicked));
     m_input_messages->signal_activate().connect(sigc::mem_fun(*this, &ChatWindow::on_send_button_clicked));
     m_dispatcher.connect(sigc::mem_fun(*this, &ChatWindow::on_message_received));
     m_status_dispatcher.connect(sigc::mem_fun(*this, &ChatWindow::on_status_update)); 
-
-    
     m_connection_thread = std::thread(&ChatWindow::connection_manager, this);
 }
 
@@ -173,12 +172,20 @@ void ChatWindow::on_message_received() {
 
 void ChatWindow::on_send_button_clicked() {
     std::string message = m_input_messages->get_text();
+    message = m_username_client +"|" + message;
 
     if (!message.empty() && m_socket != INVALID_SOCKET) {
         int bytesSent = send(m_socket, message.c_str(), message.length(), 0);
         if (bytesSent != SOCKET_ERROR) {
             auto end_iter = m_chat_buffer->end();
-            m_chat_buffer->insert(end_iter, "Siz: " + message + "\n");
+            std::string real_message;
+            size_t delimiter_pos = message.find('|');
+            if (delimiter_pos != std::string::npos) {
+            real_message = message.substr(delimiter_pos + 1);   }
+
+
+            
+            m_chat_buffer->insert(end_iter, "Siz: " + real_message + "\n");
             m_chat_history_view->scroll_to(m_chat_buffer->get_insert());
             m_input_messages->set_text("");
         } else {
@@ -187,4 +194,38 @@ void ChatWindow::on_send_button_clicked() {
             m_chat_buffer->insert(end_iter, "[Hata: Mesaj gönderilemedi. Bağlantıyı kontrol edin.]\n");
         }
     }
+}
+
+void ChatWindow::get_username() {
+
+    auto main_loop = Glib::MainLoop::create();
+    Gtk::Dialog dialog("Kullanıcı Adı", *m_window, true);
+    auto content_box = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::VERTICAL, 12);
+    dialog.get_content_area()->append(*content_box); 
+
+    auto label = Gtk::make_managed<Gtk::Label>("Lütfen kullanıcı adınızı girin:");
+    content_box->append(*label);
+    auto entry = Gtk::make_managed<Gtk::Entry>();
+    entry->set_placeholder_text("Kullanıcı Adı");
+    content_box->append(*entry);
+    dialog.add_button("Tamam", Gtk::ResponseType::OK);
+    dialog.add_button("İptal", Gtk::ResponseType::CANCEL);
+    dialog.set_default_response(Gtk::ResponseType::OK);
+    dialog.set_response_sensitive(Gtk::ResponseType::OK, false);
+    entry->signal_changed().connect([&dialog, &entry]() {
+        dialog.set_response_sensitive(Gtk::ResponseType::OK, !entry->get_text().empty());
+    });
+    dialog.signal_response().connect(
+        [&](int response_id) {
+            if (response_id == Gtk::ResponseType::OK) {
+                m_username_client = entry->get_text();
+            } else { 
+                m_username_client = "Misafir";
+            }
+            
+
+            main_loop->quit();
+        });
+    dialog.show();
+    main_loop->run();
 }
