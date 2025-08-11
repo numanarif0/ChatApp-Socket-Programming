@@ -167,7 +167,7 @@ void ChatWindow::on_message_received() {
         message = m_message_from_thread;
     }
     auto end_iter = m_chat_buffer->end();
-    m_chat_buffer->insert(end_iter, "Server: " + message + "\n");
+    m_chat_buffer->insert(end_iter, message + "\n");
     m_chat_history_view->scroll_to(m_chat_buffer->get_insert());
 }
 

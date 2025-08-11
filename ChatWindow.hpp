@@ -43,6 +43,7 @@ protected:
     Glib::Dispatcher m_dispatcher;
     std::atomic<bool> m_is_running;
 
+
     std::string m_message_from_thread;
     std::mutex m_mutex;
     std::string m_status_message;

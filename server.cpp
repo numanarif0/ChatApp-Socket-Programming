@@ -17,6 +17,7 @@ std::vector<char> messagesFromOtherClient;
 
 
 
+
 void receiveMessages(SOCKET clientSocket)
 {
     char buffer[1024];
@@ -40,14 +41,17 @@ void receiveMessages(SOCKET clientSocket)
         }
         
         buffer[bytesReceived] = '\0';
+
         std::cout << "Message from client " << clientSocket << ": " << buffer << std::endl;
         messagesFromOtherClient.insert(messagesFromOtherClient.end(), buffer, buffer + bytesReceived);
         std::lock_guard<std::mutex> lock(clientMutex);
         for (SOCKET sock : clientSockets) {
-            if (sock != clientSocket) { 
-                send(sock, buffer, bytesReceived, 0);
+            if (sock != clientSocket) {
+                
+                std::string msgWithID = std::to_string(clientSocket) + ": " + std::string(buffer, bytesReceived);
+                send(sock, msgWithID.c_str(), msgWithID.length(), 0);
             }
-            }
+        }
         
 
     }
@@ -60,6 +64,7 @@ void sendMessagesToAll()
     while (true) {
         std::cout << "Tum client'lara gonderilecek mesaj: ";
         std::getline(std::cin, message);
+        message = "Server: " + message;
 
         if (message == "exit") {
             
@@ -76,6 +81,8 @@ void sendMessagesToAll()
         for (SOCKET clientSocket : clientSockets) {
             send(clientSocket, message.c_str(), message.length(), 0);
         }
+
+
         
     }
 }
@@ -131,6 +138,9 @@ int main()
         }
         
         std::cout << "Yeni client baglandi: " << clientSocket << std::endl;
+
+  
+
 
    
         {
