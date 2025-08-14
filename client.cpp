@@ -3,11 +3,53 @@
 #include <ws2tcpip.h>
 #include <cstring>
 #include <string>
-
+#include <thread>
 
 
 #define PORT 8080
 
+void receiveMessages(SOCKET serverSocket)
+{
+    char buffer[1024];
+    int bytesReceived;
+    while (true)
+    {
+        bytesReceived = recv(serverSocket, buffer, sizeof(buffer), 0);
+        buffer[bytesReceived] = '\0';
+        std::cout << "Message from Server: " << buffer << std::endl;
+        
+        
+
+        if(bytesReceived<=0)
+
+        {
+            break;
+        } 
+    }
+
+    
+
+    
+   
+}
+
+void sendMessages(SOCKET clientSocket)
+{
+    while(true){
+    
+    std::string message;
+    std::cout<<"the message you want to send to the server: "<< message<<std::endl;
+    std::getline(std::cin ,message); 
+
+    send(clientSocket, message.c_str(), message.length(),0);
+    if(message=="exit")
+    {
+       break;
+    }
+}
+   
+
+}
 
 int main(){
 
@@ -35,67 +77,32 @@ serverAddr.sin_port = htons(PORT);
 serverAddr.sin_addr.s_addr = INADDR_ANY;
 inet_pton(AF_INET, "127.0.0.1", &serverAddr.sin_addr);
 
-connect(clientSocket,(sockaddr*)&serverAddr,sizeof(serverAddr));
-bool shutdown = false; 
 
-while(!shutdown){
-    SOCKET serverSocket = accept(clientSocket,nullptr,nullptr);
-    if(serverSocket==INVALID_SOCKET){
-         std::cerr << "Accept failed with error: " << WSAGetLastError() << std::endl;
-            continue; 
-        }
-    std::cout << "Yeni client baglandi" << std::endl;
 
-    char buffer[1024];
-    int bytesReceived;
 
-    while(true)
-    {
-        bytesReceived=recv(serverSocket,buffer,sizeof(buffer),0);
-        if(bytesReceived>0)
-        {
-            buffer[bytesReceived] = '\0';
-            std::cout << "Message from server: " << buffer << std::endl; 
-        }
-        
-        std::string message;
-        std::cout<<"the message you want to send to the server: "<< message<<std::endl;
-        std::getline(std::cin ,message); 
-
-        send(clientSocket, message.c_str(), message.length(),0);
-        if(message=="exit")
-        {
-        break;
-        }
-
-        if(strcmp(buffer,"exit")==0){
-            std::cout << "Exit..." << std::endl;
-            shutdown = true;  
-            break; 
-        }
-        
-        message.clear();
+  if (connect(clientSocket, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
+        std::cerr << "Connect failed with error: " << WSAGetLastError() << std::endl;
+        closesocket(clientSocket);
+        WSACleanup();
+        return 1;
     }
-  
-}
-        
+
+
+std::thread receiveIslem(receiveMessages,clientSocket);
+std::thread sendIslem(sendMessages,clientSocket);
+receiveIslem.join();
+sendIslem.join();
+
+
+std::cout << "Sunucu kapatiliyor." << std::endl;
 closesocket(clientSocket);
 WSACleanup();
+
+
 return 0 ;
 
-
-        
-
-
-
-
-
-    }
-
     
-
+    
    
 
-
-
-
+}

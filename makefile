@@ -1,34 +1,33 @@
 CXX = g++
+CXXFLAGS = -std=c++17 -Wall -Wextra `pkg-config --cflags gtkmm-4.0`
+LIBS = `pkg-config --libs gtkmm-4.0` -lws2_32
+
+LIBS_SERVER = -lws2_32
+
+SOURCES = main.cpp ChatWindow.cpp MainWindow.cpp
+OBJECTS = $(SOURCES:.cpp=.o)
+
+SOURCES_SERVER = server.cpp
+OBJECTS_SERVER = $(SOURCES_SERVER:.cpp=.o)
+
+SERVER_EXACUTABLE = server.exe
+EXECUTABLE = chatapp.exe
 
 
-CXXFLAGS = -Wall -g
-LDFLAGS = -lws2_32
+all: $(EXECUTABLE) $(SERVER_EXACUTABLE)
 
 
-CLIENT_TARGET = client.exe
-SERVER_TARGET = server.exe
+$(EXECUTABLE): $(OBJECTS)
+	$(CXX) -o $@ $(OBJECTS) $(LIBS)
 
+$(SERVER_EXACUTABLE): $(OBJECTS_SERVER)
+	$(CXX) -o $@ $(OBJECTS_SERVER) $(LIBS_SERVER)
 
-CLIENT_SRC = client.cpp
-SERVER_SRC = server.cpp
-
-
-.PHONY: all clean
-
-
-all: $(CLIENT_TARGET) $(SERVER_TARGET)
-
-
-$(CLIENT_TARGET): $(CLIENT_SRC)
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
-	@echo "Istemci uygulamasi '$(CLIENT_TARGET)' basariyla olusturuldu."
-
-
-$(SERVER_TARGET): $(SERVER_SRC)
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
-	@echo "Sunucu uygulamasi '$(SERVER_TARGET)' basariyla olusturuldu."
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 clean:
-	@echo "Olusturulan dosyalar temizleniyor..."
-	rm -f $(CLIENT_TARGET) $(SERVER_TARGET) *.o
-	@echo "Temizlik tamamlandi."
+	rm -f $(OBJECTS) $(EXECUTABLE)
+	rm -f $(OBJECTS_SERVER) $(SERVER_EXACUTABLE)
+
+.PHONY: all clean
