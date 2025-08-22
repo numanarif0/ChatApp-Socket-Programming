@@ -33,7 +33,7 @@ A socket-based chat application implemented in **C++** using a client–server a
 ### Prerequisites
 - **C++ Compiler** (e.g., `g++`)  
 - **Make** utility  
-- Compatible OS (Linux, macOS, or Windows with appropriate socket headers)
+
 
 ### Installation & Execution
 1. Clone the repository:  
